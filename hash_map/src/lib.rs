@@ -70,6 +70,18 @@ where
         self.len() == 0
     }
 
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let bucket = self.bucket(key)?;
+        self.buckets[bucket]
+            .iter()
+            .find(|&(ref ekey, _)| ekey.borrow() == key)
+            .map(|&(_, ref value)| value)
+    }
+
     fn resize(&mut self) {
         let target_size = match self.capacity() {
             0 => INITIAL_BUCKETS,
@@ -90,24 +102,14 @@ where
     }
 }
 
-impl<K, V> Index<K> for HashMap<K, V>
+impl<K, Q, V> Index<&Q> for HashMap<K, V>
 where
-    K: Hash + Eq,
+    K: Borrow<Q> + Hash + Eq,
+    Q: Hash + Eq,
 {
     type Output = V;
-    fn index(&self, index: K) -> &Self::Output {
-        let mut hasher = DefaultHasher::new();
-        index.hash(&mut hasher);
-        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
-        let value = self.buckets[bucket]
-            .iter()
-            .find(|&(ref ekey, _)| ekey == &index)
-            .map(|&(_, ref value)| value);
-
-        match value {
-            Some(v) => v,
-            None => panic!("Error: Index does not exist"),
-        }
+    fn index(&self, key: &Q) -> &Self::Output {
+        self.get(key).expect("No entry found for key")
     }
 }
 
@@ -124,6 +126,6 @@ mod tests {
         map.insert(37, "b");
         assert_eq!(map.insert(37, "c"), Some("b"));
         // TODO: Indexing
-        assert_eq!(map[37], "c");
+        assert_eq!(map[&37], "c");
     }
 }
