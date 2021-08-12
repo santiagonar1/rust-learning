@@ -27,7 +27,7 @@ where
     fn bucket<Q>(&self, key: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         if self.buckets.is_empty() {
             return None;
@@ -73,7 +73,7 @@ where
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         let bucket = self.bucket(key)?;
         self.buckets[bucket]
@@ -85,7 +85,7 @@ where
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         let bucket = self.bucket(key)?;
         let bucket = &mut self.buckets[bucket];
@@ -99,7 +99,7 @@ where
     pub fn contains_key<Q>(&self, key: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.get(key).is_some()
     }
@@ -127,11 +127,51 @@ where
 impl<K, Q, V> Index<&Q> for HashMap<K, V>
 where
     K: Borrow<Q> + Hash + Eq,
-    Q: Hash + Eq,
+    Q: Hash + Eq + ?Sized,
 {
     type Output = V;
     fn index(&self, key: &Q) -> &Self::Output {
         self.get(key).expect("No entry found for key")
+    }
+}
+
+pub struct Iter<'a, K, V> {
+    map: &'a HashMap<K, V>,
+    bucket: usize,
+    at: usize,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get(self.bucket) {
+                Some(bucket) => match bucket.get(self.at) {
+                    Some(&(ref k, ref v)) => {
+                        self.at += 1;
+                        break Some((k, v));
+                    }
+                    None => {
+                        self.bucket += 1;
+                        self.at = 0;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a HashMap<K, V> {
+    type Item = (&'a K, &'a V);
+    type IntoIter = Iter<'a, K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            map: self,
+            bucket: 0,
+            at: 0,
+        }
     }
 }
 
