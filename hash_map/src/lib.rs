@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -23,6 +24,21 @@ impl<K, V> HashMap<K, V>
 where
     K: Hash + Eq,
 {
+    fn bucket<Q>(&self, key: &Q) -> Option<usize>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        if self.buckets.is_empty() {
+            return None;
+        }
+
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
+        Some(bucket)
+    }
+
     pub fn len(&self) -> usize {
         self.items
     }
@@ -36,10 +52,7 @@ where
             self.resize();
         }
 
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
-
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
         let bucket = &mut self.buckets[bucket];
 
         for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
