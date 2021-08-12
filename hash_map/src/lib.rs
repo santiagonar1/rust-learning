@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::mem;
 const INITIAL_BUCKETS: usize = 1;
 
 pub struct HashMap<K, V> {
@@ -29,15 +30,30 @@ where
         self.buckets.len()
     }
 
-    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         if self.capacity() == 0 || self.items > (3 / 4) * self.buckets.len() {
             self.resize();
         }
+
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let bucket = (hasher.finish() % self.buckets.len() as u64) as usize;
+
+        let bucket = &mut self.buckets[bucket];
+
+        for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
+            if ekey == &key {
+                return Some(mem::replace(evalue, value));
+            }
+        }
+
+        self.items += 1;
+        bucket.push((key, value));
         None
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len() > 0
+        self.len() == 0
     }
 
     fn resize(&mut self) {
