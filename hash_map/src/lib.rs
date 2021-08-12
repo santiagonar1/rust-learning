@@ -96,6 +96,14 @@ where
         Some(bucket.swap_remove(index).1)
     }
 
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.get(key).is_some()
+    }
+
     fn resize(&mut self) {
         let target_size = match self.capacity() {
             0 => INITIAL_BUCKETS,
@@ -150,5 +158,13 @@ mod tests {
         assert_eq!(map.remove(&37), Some("a"));
         assert_eq!(map.remove(&37), None);
         assert_eq!(map.is_empty(), true);
+    }
+
+    #[test]
+    fn check_contains_key() {
+        let mut map = HashMap::new();
+        map.insert(1, "a");
+        assert_eq!(map.contains_key(&1), true);
+        assert_eq!(map.contains_key(&2), false);
     }
 }
