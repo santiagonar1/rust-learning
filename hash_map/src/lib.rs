@@ -82,6 +82,20 @@ where
             .map(|&(_, ref value)| value)
     }
 
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let bucket = self.bucket(key)?;
+        let bucket = &mut self.buckets[bucket];
+        let index = bucket
+            .iter()
+            .position(|&(ref ekey, _)| ekey.borrow() == key)?;
+        self.items -= 1;
+        Some(bucket.swap_remove(index).1)
+    }
+
     fn resize(&mut self) {
         let target_size = match self.capacity() {
             0 => INITIAL_BUCKETS,
@@ -127,5 +141,14 @@ mod tests {
         assert_eq!(map.insert(37, "c"), Some("b"));
         // TODO: Indexing
         assert_eq!(map[&37], "c");
+    }
+
+    #[test]
+    fn can_remove() {
+        let mut map = HashMap::new();
+        assert_eq!(map.insert(37, "a"), None);
+        assert_eq!(map.remove(&37), Some("a"));
+        assert_eq!(map.remove(&37), None);
+        assert_eq!(map.is_empty(), true);
     }
 }
