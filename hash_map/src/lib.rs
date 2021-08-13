@@ -175,6 +175,40 @@ impl<'a, K, V> IntoIterator for &'a HashMap<K, V> {
     }
 }
 
+pub struct IntoIter<K, V> {
+    map: HashMap<K, V>,
+    bucket: usize,
+}
+
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get_mut(self.bucket) {
+                Some(bucket) => match bucket.pop() {
+                    Some((k, v)) => break Some((k, v)),
+                    None => {
+                        self.bucket += 1;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<K, V> IntoIterator for HashMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            map: self,
+            bucket: 0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
