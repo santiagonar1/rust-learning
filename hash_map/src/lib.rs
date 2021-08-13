@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::iter::FromIterator;
 use std::mem;
 use std::ops::Index;
 const INITIAL_BUCKETS: usize = 1;
@@ -206,6 +207,22 @@ impl<K, V> IntoIterator for HashMap<K, V> {
             map: self,
             bucket: 0,
         }
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for HashMap<K, V>
+where
+    K: Hash + Eq,
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let mut map = HashMap::new();
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+        map
     }
 }
 
